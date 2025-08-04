@@ -17,39 +17,91 @@ export function generateCandidatesFromJD(jd: string, resumes: string[]): Candida
   return resumes.map((resume, idx) => {
     const lines = resume.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     let candidateName = 'Unknown';
-    // Strictly check first 5 non-empty lines for a name-like pattern
-    for (let i = 0; i < Math.min(5, lines.length); i++) {
-      const line = lines[i];
-      const words = line.split(/\s+/);
-      if (
-        words.length >= 2 && words.length <= 4 &&
-        words.every(w => /^[A-Z][a-zA-Z'.-]+$/.test(w)) &&
-        line.length < 40
-      ) {
-        candidateName = line;
-        break;
-      }
-    }
-    // Fallback to previous sub-line logic if not found
-    if (candidateName === 'Unknown') {
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const subLines = line.split(/[.|•\-]/).map(s => s.trim()).filter(Boolean);
-        for (const subLine of subLines) {
-          if (/email|mobile|linkedin|summary|@|\d{3,}/i.test(subLine)) continue;
-          const words = subLine.split(/\s+/);
-          if (
-            words.length >= 2 && words.length <= 4 &&
-            words.every(w => /^[A-Z][a-zA-Z'.-]+$/.test(w))
-          ) {
-            candidateName = subLine;
-            break;
-          }
+    
+    // Enhanced name extraction function
+    const extractName = () => {
+             // Strategy 1: Check first 5 lines for common name patterns
+       for (let i = 0; i < Math.min(5, lines.length); i++) {
+         const line = lines[i];
+         
+         // Skip obvious non-name lines
+         if (/email|mobile|phone|\+\d{1,3}|@|linkedin|http|summary|experience|engineer|developer|manager|module|lead|senior|junior|associate|specialist|analyst|coordinator|director|consultant|architect|backend|frontend|full|stack|team|project|product|quality|assurance|business|data|scientist|administrator|supervisor|assistant|executive|operations|marketing|sales|finance|human|resources|legal|accounting|support|customer|success|service|representative|intern|trainee|vice|president|chief|officer|head|principal|staff|solutions|systems|network|database|security|devops|cloud|mobile|web|application|platform|infrastructure|technology|information|science|research|innovation|strategy|growth|acquisition|retention/i.test(line)) {
+           continue;
+         }
+         
+         const words = line.split(/\s+/);
+         
+         // Check for 2-4 word names with proper capitalization
+         if (words.length >= 2 && words.length <= 4 && line.length < 50) {
+           // Pattern 1: Title case names (John Smith, Hari Babu Kariprolu)
+           if (words.every(w => /^[A-Z][a-z]+$/.test(w))) {
+             candidateName = line;
+             return candidateName;
+           }
+           
+           // Pattern 2: All caps names (RAVINDER KUMAR)
+           if (words.every(w => /^[A-Z]+$/.test(w) && w.length >= 2)) {
+             candidateName = line;
+             return candidateName;
+           }
+           
+           // Pattern 3: Mixed case (John SMITH)
+           if (words.every(w => /^[A-Z][A-Za-z]+$/.test(w))) {
+             candidateName = line;
+             return candidateName;
+           }
+         }
+       }
+      
+      // Strategy 2: Look for name patterns throughout the text
+      const fullText = resume.replace(/\n/g, ' ').trim();
+      
+      // Look for "RK RAVINDER KUMAR" pattern (initials followed by full name)
+      const initialsNamePattern = /\b[A-Z]{1,3}\s+([A-Z]+(?:\s+[A-Z]+)+)\b/g;
+      let match = initialsNamePattern.exec(fullText);
+      if (match) {
+        const potentialName = match[1].trim();
+        const words = potentialName.split(/\s+/);
+        if (words.length >= 2 && words.length <= 4 && words.every(w => w.length >= 2)) {
+          candidateName = potentialName;
+          return candidateName;
         }
-        if (candidateName !== 'Unknown') break;
       }
+      
+      // Strategy 3: Look for standalone full names (ALL CAPS)
+      const allCapsNamePattern = /\b([A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})?)\b/g;
+      match = allCapsNamePattern.exec(fullText);
+      if (match) {
+        const potentialName = match[1].trim();
+        const words = potentialName.split(/\s+/);
+        if (words.length >= 2 && words.length <= 4 && 
+            !/(SUMMARY|EXPERIENCE|SKILLS|EDUCATION|PROFESSIONAL|SOFTWARE|ENGINEER|DEVELOPER|MANAGER|TECHNICAL)/i.test(potentialName)) {
+          candidateName = potentialName;
+          return candidateName;
+        }
+      }
+      
+      // Strategy 4: Look for title case names throughout text
+      const titleCaseNamePattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\b/g;
+      while ((match = titleCaseNamePattern.exec(fullText)) !== null) {
+        const potentialName = match[1].trim();
+        const words = potentialName.split(/\s+/);
+        if (words.length >= 2 && words.length <= 4 && potentialName.length < 50 &&
+            !/(Email|Mobile|LinkedIn|Summary|Experience|Skills|Education|Professional|Software|Engineer|Developer|Manager|Technical|Years|Building|Expertise|Module|Lead|Senior|Junior|Associate|Specialist|Analyst|Coordinator|Director|Consultant|Architect|Backend|Frontend|Full|Stack|Team|Project|Product|Quality|Assurance|Business|Data|Scientist|Administrator|Supervisor|Assistant|Executive|Operations|Marketing|Sales|Finance|Human|Resources|Legal|Accounting|Support|Customer|Success|Service|Representative|Intern|Trainee|Vice|President|Chief|Officer|Head|Principal|Staff|Solutions|Systems|Network|Database|Security|DevOps|Cloud|Mobile|Web|Application|Platform|Infrastructure|Technology|Information|Science|Research|Innovation|Strategy|Growth|Acquisition|Retention)/i.test(potentialName)) {
+          candidateName = potentialName;
+          return candidateName;
+        }
+      }
+      
+      return candidateName;
+    };
+    
+    candidateName = extractName();
+    
+    // Fallback: use first line if nothing found
+    if (candidateName === 'Unknown' && lines.length > 0) {
+      candidateName = lines[0];
     }
-    if (candidateName === 'Unknown' && lines.length > 0) candidateName = lines[0];
 
     // Find matched and missing skills
     const matchedMustHave = mustHaveSkills.filter(skill => skill && new RegExp(skill, 'i').test(resume));

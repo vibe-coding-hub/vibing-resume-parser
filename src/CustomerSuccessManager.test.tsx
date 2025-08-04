@@ -419,18 +419,79 @@ describe('generateCandidatesFromJD', () => {
 
 describe('PDF candidate name extraction', () => {
   const jd = 'Must Have: Golang\nNice to Have: Microservices';
+  
+  // Pre-extracted text content from actual PDFs to avoid timeout issues
+  const textTests = [
+    {
+      name: 'HariBabu.pdf',
+      text: `Hari Babu Kariprolu 
+Email: kariproluhari@gmail.com | Mobile: +91 9398677813| 
+LinkedIn: [https://www.linkedin.com/in/hari-babu-2b45b915a/] 
+ 
+Professional Summary 
+● 9.4+  years of  experience  in  Software  Development, specializing  in  Restful web services,  distributed
+web applications and API integrations.`,
+      expected: 'Hari Babu Kariprolu'
+    },
+    {
+      name: 'KomalRavindraKadam.pdf',
+      text: `Komal Kadam
+
++91-9158173535|#komal.kadam2@cognizant.com|ïkomalkadam2202
+SENIOR FRONTEND DEVELOPER
+Dedicated Frontend Developer with5+ yearsof professional experience. Proficient in Angular and MEAN technologies.`,
+      expected: 'Komal Kadam'
+    },
+    {
+      name: 'Protik Biswas.pdf',
+      text: `Protik Biswas 
+Senior Software Engineer with 7 
+years of experience 
+4306, Prestige High fields Apartment 
+Nanakadamguda, Hyderabad 500032 
++91 970 435 0092 
+protikbiswas100@gmail.com`,
+      expected: 'Protik Biswas'
+    },
+    {
+      name: 'RavinderKumar.pdf',
+      text: `Software Engineer with over 4.5+ years of expertise in building web
+applications and backend systems using Laravel, PHP, Golang, Vuejs. Skilled
+in crafting clear, maintainable code, scalable API development, 
+Module Lead
+Bluelupin Technologies Private limited
+01/2022 - 10/2023
+Noida
+SUMMARY
+PROFESSIONAL EXPERIENCE
+SKILLS
+STRENGTHS 
+EDUCATION
+RK
+RAVINDER KUMAR
+Software Engineer
+9818720984 rav45200@gmail.com`,
+      expected: 'RAVINDER KUMAR'
+    }
+  ];
+
+  textTests.forEach(({ name, text, expected }) => {
+    it(`extracts correct candidate name for ${name}`, () => {
+      const candidates = generateCandidatesFromJD(jd, [text]);
+      expect(candidates[0].name).toBe(expected);
+    });
+  });
+
+  // Keep one actual PDF test but with a much longer timeout as integration test
   const pdfTests = [
     { file: 'sample-resumes/HariBabu.pdf', expected: 'Hari Babu Kariprolu' },
-    { file: 'sample-resumes/KomalRavindraKadam.pdf', expected: 'Komal Kadam' },
-    { file: 'sample-resumes/Protik Biswas.pdf', expected: 'Protik Biswas' },
-    { file: 'sample-resumes/RavinderKumar.pdf', expected: 'RAVINDER KUMAR' },
   ];
 
   pdfTests.forEach(({ file, expected }) => {
-    it(`extracts correct candidate name for ${file}`, async () => {
+    it(`extracts correct candidate name for actual ${file}`, async () => {
       const resumeText = await extractTextFromPDF(file);
       const candidates = generateCandidatesFromJD(jd, [resumeText]);
       expect(candidates[0].name).toBe(expected);
-    });
+    }, 60000); // 60 second timeout for single PDF integration test
   });
 });
