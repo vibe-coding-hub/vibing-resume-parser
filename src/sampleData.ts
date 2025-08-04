@@ -1,138 +1,93 @@
 import { Candidate } from './CustomerSuccessManager';
 
-export const sampleCandidates: Candidate[] = [
-  {
-    id: '1',
-    name: 'Lucas',
-    location: 'Vancouver, BC, Canada',
-    currentRole: 'Senior Director of Operations',
-    currentCompany: 'CONNECTIONPOINT SYSTEMS INC',
-    score: 8.9,
-    experiences: [
-      {
-        role: 'Customer Success Manager',
-        company: 'Zendesk',
-        period: 'Apr 2022 - Present'
-      },
-      {
-        role: 'Customer Success Manager',
-        company: 'Freshworks',
-        period: 'July 2017 - April 2022'
-      },
-      {
-        role: 'Customer Success Manager',
-        company: 'Monday.com',
-        period: 'March 2015 - June 2017'
+// Function to generate candidates from JD and resume texts
+export function generateCandidatesFromJD(jd: string, resumes: string[]): Candidate[] {
+  // Extract must-have and nice-to-have skills from JD string
+  const mustHaveMatch = jd.match(/Must Have:\s*(.*)/i);
+  const niceToHaveMatch = jd.match(/Nice to Have:\s*(.*)/i);
+  const mustHaveSkills = mustHaveMatch ? mustHaveMatch[1].split(',').map(s => s.trim()).filter(Boolean) : [];
+  const niceToHaveSkills = niceToHaveMatch ? niceToHaveMatch[1].split(',').map(s => s.trim()).filter(Boolean) : [];
+  const allSkills = [...mustHaveSkills, ...niceToHaveSkills];
+
+  // Scoring weights
+  const mustHaveWeight = 3;
+  const niceToHaveWeight = 1;
+  const maxScore = (mustHaveSkills.length * mustHaveWeight) + (niceToHaveSkills.length * niceToHaveWeight);
+
+  return resumes.map((resume, idx) => {
+    const lines = resume.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    let candidateName = 'Unknown';
+    // Strictly check first 5 non-empty lines for a name-like pattern
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+      const line = lines[i];
+      const words = line.split(/\s+/);
+      if (
+        words.length >= 2 && words.length <= 4 &&
+        words.every(w => /^[A-Z][a-zA-Z'.-]+$/.test(w)) &&
+        line.length < 40
+      ) {
+        candidateName = line;
+        break;
       }
-    ],
-    strengths: [
-      '9+ years in Customer Success roles',
-      '3+ years in mid-size companies',
-      'Achieved 30 churn at Freshworks System',
-      'Background in Software Development industry',
-      'Managed $1,000,000+ ARR accounts'
-    ],
-    weaknesses: [
-      'Slight overqualification for the role',
-      'Limited recent experience in smaller startups'
-    ],
-    recommendation: 'approve'
-  },
-  {
-    id: '2',
-    name: 'Jackson',
-    location: 'Minneapolis, MN, USA',
-    currentRole: 'Senior Customer Success',
-    currentCompany: 'Manager at Relay Systems',
-    score: 8.4,
-    experiences: [
-      {
-        role: 'Senior Customer Success Manager',
-        company: 'HubSpot',
-        period: 'September 2019 - Present'
-      },
-      {
-        role: 'Customer Success Manager',
-        company: 'Drift',
-        period: 'March 2018 - August 2019'
-      },
-      {
-        role: 'Customer Success Manager',
-        company: 'Slack',
-        period: 'June 2015 - February 2018'
+    }
+    // Fallback to previous sub-line logic if not found
+    if (candidateName === 'Unknown') {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const subLines = line.split(/[.|•\-]/).map(s => s.trim()).filter(Boolean);
+        for (const subLine of subLines) {
+          if (/email|mobile|linkedin|summary|@|\d{3,}/i.test(subLine)) continue;
+          const words = subLine.split(/\s+/);
+          if (
+            words.length >= 2 && words.length <= 4 &&
+            words.every(w => /^[A-Z][a-zA-Z'.-]+$/.test(w))
+          ) {
+            candidateName = subLine;
+            break;
+          }
+        }
+        if (candidateName !== 'Unknown') break;
       }
-    ],
-    strengths: [
-      '9+ years in Customer Success roles',
-      '3+ years in mid-size companies',
-      'Managed $1,000,000+ ARR accounts',
-      'Worked for similar size series B startup'
-    ],
-    weaknesses: [
-      'Limited experience in HR Tech',
-      'Short tenure at Slack (less than a year)'
-    ],
-    recommendation: 'approve'
-  },
-  {
-    id: '3',
-    name: 'Henry',
-    location: 'Billings, MT, USA',
-    currentRole: 'Customer Success Specialist',
-    currentCompany: 'PerformYard',
-    score: 7.9,
-    experiences: [
-      {
-        role: 'Customer Success Manager',
-        company: 'Salesforce',
-        period: 'August 2021 - Present'
-      },
-      {
-        role: 'Customer Support Analyst',
-        company: 'Lattice',
-        period: 'January 2017 - July 2021'
+    }
+    if (candidateName === 'Unknown' && lines.length > 0) candidateName = lines[0];
+
+    // Find matched and missing skills
+    const matchedMustHave = mustHaveSkills.filter(skill => skill && new RegExp(skill, 'i').test(resume));
+    const matchedNiceToHave = niceToHaveSkills.filter(skill => skill && new RegExp(skill, 'i').test(resume));
+    const matchedSkills = [...matchedMustHave, ...matchedNiceToHave];
+    const missingSkills = allSkills.filter(skill => skill && !new RegExp(skill, 'i').test(resume));
+
+    // Improved experience parsing: look for blocks of [Role] then [Company] | [Period]
+    const experiences = [];
+    for (let i = 0; i < lines.length - 1; i++) {
+      // Role line followed by Company | Period line
+      const roleLine = lines[i];
+      const companyPeriodLine = lines[i + 1];
+      const companyPeriodMatch = companyPeriodLine.match(/([A-Za-z0-9 .,&\-|]+)\s*[|\-]\s*([A-Za-z0-9 ,]+\d{4}(?:\s*-\s*(?:Present|[A-ZaZ]+ \d{4}))?)/);
+      if (companyPeriodMatch) {
+        experiences.push({
+          role: roleLine,
+          company: companyPeriodMatch[1].trim(),
+          period: companyPeriodMatch[2].trim()
+        });
       }
-    ],
-    strengths: [
-      '3+ years in customer success role',
-      'Experience in HR Tech and SaaS',
-      'High customer retention rates',
-      'Relevant experience in technology industries',
-      'Worked in hyper-growth company'
-    ],
-    weaknesses: [
-      'Limited experience with Enterprise clients'
-    ],
-    recommendation: 'approve'
-  },
-  {
-    id: '4',
-    name: 'Victoria',
-    location: 'Colorado Springs, CO, USA',
-    currentRole: 'Customer Success Agent',
-    currentCompany: 'MinistryBrands',
-    score: 5.8,
-    experiences: [
-      {
-        role: 'Customer Success Manager',
-        company: 'Intercom',
-        period: 'June 2021 - Jan 2023'
-      },
-      {
-        role: 'Customer Support Associate',
-        company: 'Gainsight',
-        period: 'October 2015 - May 2019'
-      }
-    ],
-    strengths: [
-      '1.5 year experience in SaaS (Intercom)',
-      'Worked with funded startups'
-    ],
-    weaknesses: [
-      'Recent employment gaps',
-      'Only beginner proficiency in some key skills',
-      'No upselling experience'
-    ],
-    recommendation: 'reject'
-  }
-];
+    }
+
+    // Calculate score
+    const scoreRaw = (matchedMustHave.length * mustHaveWeight) + (matchedNiceToHave.length * niceToHaveWeight);
+    const score = maxScore > 0 ? Math.round((scoreRaw / maxScore) * 10 * 10) / 10 : 0; // 1 decimal, scale 0-10
+
+    return {
+      id: String(idx + 1),
+      name: candidateName,
+      location: 'Unknown',
+      currentRole: experiences[0]?.role || 'Unknown',
+      currentCompany: experiences[0]?.company || 'Unknown',
+      score,
+      experiences,
+      strengths: matchedSkills.length > 0 ? matchedSkills : ['No skills matched'],
+      weaknesses: missingSkills.length > 0 ? missingSkills : ['None'],
+      recommendation: 'approve'
+    };
+  });
+}

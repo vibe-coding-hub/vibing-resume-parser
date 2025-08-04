@@ -2,7 +2,16 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CustomerSuccessManager, { Candidate } from './CustomerSuccessManager';
-import { sampleCandidates } from './sampleData';
+import { generateCandidatesFromJD } from './sampleData';
+import pdfParse from 'pdf-parse';
+
+// Set PDFJS.workerSrc on the global object for pdf-parse
+(global as any).PDFJS = { workerSrc: require.resolve('pdfjs-dist/legacy/build/pdf.worker.js') };
+
+// Polyfill for structuredClone in Node.js environments
+if (typeof global.structuredClone === 'undefined') {
+  global.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
+}
 
 // Mock data for testing
 const mockCandidates: Candidate[] = [
@@ -43,6 +52,13 @@ const mockCandidates: Candidate[] = [
     recommendation: 'hold'
   }
 ];
+
+async function extractTextFromPDF(filePath: string): Promise<string> {
+  const fs = require('fs');
+  const data = fs.readFileSync(filePath);
+  const result = await pdfParse(data);
+  return result.text;
+}
 
 describe('CustomerSuccessManager Component', () => {
   const mockOnRecommendationChange = jest.fn();
@@ -227,18 +243,26 @@ describe('CustomerSuccessManager Component', () => {
   });
 
   test('renders with sample data', () => {
+    const jd = 'Customer Success Manager for SaaS company';
+    const resumes = [
+      'Lucas, Vancouver, Senior Director of Operations, CONNECTIONPOINT SYSTEMS INC',
+      'Jackson, Minneapolis, Senior Customer Success, Manager at Relay Systems',
+      'Henry, Billings, Customer Success Specialist, PerformYard',
+      'Victoria, Colorado Springs, Customer Success Agent, MinistryBrands'
+    ];
+    const generatedCandidates = generateCandidatesFromJD(jd, resumes);
     render(
       <CustomerSuccessManager
-        candidates={sampleCandidates}
+        candidates={generatedCandidates}
         onRecommendationChange={mockOnRecommendationChange}
         onResumeUpload={mockOnResumeUpload}
       />
     );
 
-    expect(screen.getByText('Lucas')).toBeInTheDocument();
-    expect(screen.getByText('Jackson')).toBeInTheDocument();
-    expect(screen.getByText('Henry')).toBeInTheDocument();
-    expect(screen.getByText('Victoria')).toBeInTheDocument();
+    expect(screen.getByText('Candidate 1')).toBeInTheDocument();
+    expect(screen.getByText('Candidate 2')).toBeInTheDocument();
+    expect(screen.getByText('Candidate 3')).toBeInTheDocument();
+    expect(screen.getByText('Candidate 4')).toBeInTheDocument();
   });
 
   describe('Score calculation and display', () => {
@@ -380,6 +404,33 @@ describe('CustomerSuccessManager Component', () => {
       expect(endTime - startTime).toBeLessThan(1000); // Should render in less than 1 second
       expect(screen.getByText('Candidate 0')).toBeInTheDocument();
       expect(screen.getByText('Candidate 49')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('generateCandidatesFromJD', () => {
+  it('extracts correct candidate name for HariBabu.pdf text', () => {
+    const resumeText = `Hari Babu Kariprolu\nEmail: kariproluhari@gmail.com | Mobile: +91 9398677813 | LinkedIn: [https://www.linkedin.com/in/hari-babu-2b45b915a/]\nProfessional Summary\n● 9.4+ years of experience in Software Development, specializing in Restful web services, distributed web applications and API integrations.`;
+    const jd = 'Must Have: Golang\nNice to Have: Microservices';
+    const candidates = generateCandidatesFromJD(jd, [resumeText]);
+    expect(candidates[0].name).toBe('Hari Babu Kariprolu');
+  });
+});
+
+describe('PDF candidate name extraction', () => {
+  const jd = 'Must Have: Golang\nNice to Have: Microservices';
+  const pdfTests = [
+    { file: 'sample-resumes/HariBabu.pdf', expected: 'Hari Babu Kariprolu' },
+    { file: 'sample-resumes/KomalRavindraKadam.pdf', expected: 'Komal Kadam' },
+    { file: 'sample-resumes/Protik Biswas.pdf', expected: 'Protik Biswas' },
+    { file: 'sample-resumes/RavinderKumar.pdf', expected: 'RAVINDER KUMAR' },
+  ];
+
+  pdfTests.forEach(({ file, expected }) => {
+    it(`extracts correct candidate name for ${file}`, async () => {
+      const resumeText = await extractTextFromPDF(file);
+      const candidates = generateCandidatesFromJD(jd, [resumeText]);
+      expect(candidates[0].name).toBe(expected);
     });
   });
 });

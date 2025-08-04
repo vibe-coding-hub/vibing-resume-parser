@@ -20,6 +20,7 @@
   "license": "MIT",
   "dependencies": {
     "mammoth": "^1.9.1",
+    "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^3.11.174",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -32,6 +33,7 @@
     "@testing-library/user-event": "^14.4.3",
     "@types/jest": "^27.5.2",
     "@types/node": "^16.18.23",
+    "@types/pdf-parse": "^1.1.5",
     "@types/pdfjs-dist": "^2.10.377",
     "@types/react": "^18.0.35",
     "@types/react-dom": "^18.0.11"

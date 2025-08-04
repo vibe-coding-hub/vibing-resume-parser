@@ -28,13 +28,15 @@ export interface Candidate {
 interface CustomerSuccessManagerProps {
   candidates: Candidate[];
   onRecommendationChange: (candidateId: string, recommendation: RecommendationType) => void;
-  onResumeUpload: (file: File) => Promise<void>;
+  onResumeUpload: (files: File[]) => Promise<void>;
+  jdResumeSection?: React.ReactNode;
 }
 
 const CustomerSuccessManager: React.FC<CustomerSuccessManagerProps> = ({
   candidates,
   onRecommendationChange,
-  onResumeUpload
+  onResumeUpload,
+  jdResumeSection
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const getScoreColor = (score: number): string => {
@@ -87,28 +89,24 @@ const CustomerSuccessManager: React.FC<CustomerSuccessManagerProps> = ({
     if (files && files.length > 0) {
       setIsUploading(true);
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-      
-      try {
-        // Process each uploaded file
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          
-          if (allowedTypes.includes(file.type)) {
-            try {
-              await onResumeUpload(file);
-            } catch (error) {
-              console.error(`Error processing file ${file.name}:`, error);
-              alert(`Error processing ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-          } else {
-            alert(`Please upload valid resume files (PDF, DOC, DOCX, or TXT). Skipped: ${file.name}`);
-          }
+      const validFiles: File[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (allowedTypes.includes(file.type)) {
+          validFiles.push(file);
+        } else {
+          alert(`Please upload valid resume files (PDF, DOC, DOCX, or TXT). Skipped: ${file.name}`);
         }
-      } finally {
-        setIsUploading(false);
-        // Clear the input so the same file can be uploaded again if needed
-        event.target.value = '';
       }
+      if (validFiles.length > 0) {
+        try {
+          await onResumeUpload(validFiles);
+        } catch (error) {
+          alert(`Error processing resumes: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+      setIsUploading(false);
+      event.target.value = '';
     }
   };
 
@@ -173,12 +171,13 @@ const CustomerSuccessManager: React.FC<CustomerSuccessManagerProps> = ({
         <div className="logo">🎯</div>
         <h1>Customer Success Manager</h1>
       </header>
-
+      {jdResumeSection}
       <div className="content">
         {renderUploadSection()}
         
         <div className="section-headers">
           <div className="section-header">Candidates</div>
+          <div className="section-header">Score</div>
           <div className="section-header">Experience</div>
           <div className="section-header">Details</div>
           <div className="section-header">Shortlist Recommendation - Yes/No</div>
@@ -199,11 +198,11 @@ const CustomerSuccessManager: React.FC<CustomerSuccessManagerProps> = ({
                     🏢 {candidate.currentCompany}
                   </div>
                 </div>
-                <div className="candidate-score">
-                  {renderCircularScore(candidate.score)}
-                </div>
               </div>
-
+              {/* Score Column */}
+              <div className="candidate-score">
+                {renderCircularScore(candidate.score)}
+              </div>
               {/* Experience */}
               <div className="candidate-experience">
                 {candidate.experiences.map((exp, index) => (

@@ -17,3 +17,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f8f9fa;
 }
+
+.toast-success {
+  position: fixed;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #4ade80, #22d3ee);
+  color: #065f46;
+  font-weight: 700;
+  padding: 16px 32px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(34, 211, 238, 0.15);
+  z-index: 9999;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) scale(0.95); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}

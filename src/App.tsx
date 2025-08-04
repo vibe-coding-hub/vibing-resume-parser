@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
 import CustomerSuccessManager, { RecommendationType, Candidate } from './CustomerSuccessManager';
-import { sampleCandidates } from './sampleData';
-import { resumeParser } from './resumeParser';
+import JDResumeInput from './JDResumeInput';
+import { generateCandidatesFromJD } from './sampleData';
 import './App.css';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+import 'pdfjs-dist/build/pdf.worker.entry';
+
+interface JDState {
+  mustHave: string;
+  niceToHave: string;
+}
 
 function App() {
-  const [candidates, setCandidates] = useState(sampleCandidates);
+  const [jd, setJD] = useState<JDState>({ mustHave: '', niceToHave: '' });
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [jdSubmitted, setJDSubmitted] = useState(false);
+  const [resumeFiles, setResumeFiles] = useState<File[]>([]);
+  const [showToast, setShowToast] = useState(false);
+  const [editingJD, setEditingJD] = useState(false);
+  const [jdChangedSinceScan, setJDChangedSinceScan] = useState(false);
 
   const handleRecommendationChange = (candidateId: string, recommendation: RecommendationType) => {
     setCandidates(prevCandidates =>
@@ -15,45 +28,107 @@ function App() {
           : candidate
       )
     );
-    
-    console.log(`Candidate ${candidateId} recommendation changed to: ${recommendation}`);
   };
 
-  const handleResumeUpload = async (file: File) => {
-    try {
-      console.log(`Processing resume: ${file.name}`);
-      
-      // Parse the resume file
-      const resumeText = await resumeParser.parseFile(file);
-      console.log('Raw parsed text from file:', resumeText);
-      console.log('First 500 characters:', resumeText.substring(0, 500));
-      console.log('Lines breakdown:', resumeText.split('\n').slice(0, 10));
-      
-      // Extract structured data from the resume
-      const parsedData = resumeParser.extractResumeData(resumeText);
-      console.log('Extracted structured data:', parsedData);
-      console.log('Extracted name specifically:', parsedData.name);
-      
-      // Generate a new candidate from the parsed data
-      const newCandidate = resumeParser.generateCandidateFromResume(parsedData);
-      console.log('Generated candidate:', newCandidate);
-      
-      // Add the new candidate to the list
-      setCandidates(prevCandidates => [...prevCandidates, newCandidate]);
-      
-      alert(`Successfully added candidate: ${newCandidate.name}`);
-    } catch (error) {
-      console.error('Error processing resume:', error);
-      alert(`Failed to process resume: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  // Step 1: Submit JD only
+  const handleJDSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setJDSubmitted(true);
+    setEditingJD(false);
+    setShowToast(true);
+    setJDChangedSinceScan(false);
+    setTimeout(() => setShowToast(false), 3000);
+    // Automatically rescan candidates if resumes are uploaded
+    if (resumeFiles.length > 0) {
+      const texts = await Promise.all(resumeFiles.map(file => file.text()));
+      const jdString = `Must Have: ${jd.mustHave}\nNice to Have: ${jd.niceToHave}`;
+      const generated = generateCandidatesFromJD(jdString, texts);
+      setCandidates(generated);
     }
+  };
+
+  // Allow editing JD
+  const handleEditJD = () => {
+    setEditingJD(true);
+  };
+
+  // Track JD changes after initial submit
+  const handleJDChange = (newJD: JDState) => {
+    setJD(newJD);
+    if (jdSubmitted) {
+      setJDChangedSinceScan(true);
+    }
+  };
+
+  // Helper to extract text from PDF using pdfjs-dist
+  async function extractTextFromPDF(file: File): Promise<string> {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += (content.items as { str?: string }[]).map(item => (item.str || '')).join(' ') + '\n';
+    }
+    return text;
+  }
+
+  // Step 2: When resumes are uploaded, generate candidates using stored JD
+  const handleResumeUpload = async (files: File[]) => {
+    setResumeFiles(files);
+    if (jdSubmitted && files.length > 0) {
+      const texts = await Promise.all(files.map(async file => {
+        if (file.type === 'application/pdf') {
+          return await extractTextFromPDF(file);
+        } else {
+          return await file.text();
+        }
+      }));
+      const jdString = `Must Have: ${jd.mustHave}\nNice to Have: ${jd.niceToHave}`;
+      const generated = generateCandidatesFromJD(jdString, texts);
+      setCandidates(generated);
+      setJDChangedSinceScan(false);
+    }
+  };
+
+  // Rescan candidates after JD update
+  const handleRescanCandidates = async () => {
+    if (resumeFiles.length > 0) {
+      const texts = await Promise.all(resumeFiles.map(async file => {
+        if (file.type === 'application/pdf') {
+          return await extractTextFromPDF(file);
+        } else {
+          return await file.text();
+        }
+      }));
+      const jdString = `Must Have: ${jd.mustHave}\nNice to Have: ${jd.niceToHave}`;
+      const generated = generateCandidatesFromJD(jdString, texts);
+      setCandidates(generated);
+      setJDChangedSinceScan(false);
+    }
+    setEditingJD(false);
   };
 
   return (
     <div className="App">
+      {showToast && (
+        <div className="toast-success">JD submitted successfully!</div>
+      )}
       <CustomerSuccessManager
         candidates={candidates}
         onRecommendationChange={handleRecommendationChange}
         onResumeUpload={handleResumeUpload}
+        jdResumeSection={
+          <JDResumeInput
+            jd={jd}
+            setJD={handleJDChange}
+            onSubmit={handleJDSubmit}
+            readonly={jdSubmitted && !editingJD}
+            onEdit={handleEditJD}
+            showRescan={jdChangedSinceScan && resumeFiles.length > 0}
+            onRescan={handleRescanCandidates}
+          />
+        }
       />
     </div>
   );

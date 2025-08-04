@@ -247,6 +247,17 @@ export class ResumeParser {
     const lines = cleanText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     console.log('Clean lines for name extraction:', lines.slice(0, 10));
     
+    // New: Strictly check the very first non-empty line for a name
+    if (lines.length > 0) {
+      const firstLine = lines[0];
+      const words = firstLine.split(/\s+/);
+      const allCapitalized = words.length >= 2 && words.length <= 4 && words.every(word => /^[A-Z][a-z]+$/.test(word));
+      const reasonableLength = words.every(word => word.length >= 2 && word.length <= 15);
+      if (allCapitalized && reasonableLength && firstLine.length < 40) {
+        return firstLine;
+      }
+    }
+    
     // Strategy 0: Priority check - look at the very first few lines before anything else
     console.log('Priority check: Looking at first 5 lines for name...');
     for (let i = 0; i < Math.min(5, lines.length); i++) {
@@ -875,7 +886,7 @@ export class ResumeParser {
             line.toLowerCase().includes('seeking') ||
             line.toLowerCase().includes('passionate') ||
             line.toLowerCase().includes('years of experience') ||
-            line.length > 80) {
+            line.toLowerCase().includes('proven track record')) {
           continue;
         }
         
