@@ -180,7 +180,7 @@ const CustomerSuccessManager: React.FC<CustomerSuccessManagerProps> = ({
           <div className="section-header">Score</div>
           <div className="section-header">Experience</div>
           <div className="section-header">Details</div>
-          <div className="section-header">Shortlist Recommendation - Yes/No</div>
+          <div className="section-header">Recommendation</div>
         </div>
 
         <div className="candidates-list">

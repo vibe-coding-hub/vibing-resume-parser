@@ -86,7 +86,20 @@ function App() {
       }));
       const jdString = `Must Have: ${jd.mustHave}\nNice to Have: ${jd.niceToHave}`;
       const generated = generateCandidatesFromJD(jdString, texts);
-      setCandidates(generated);
+      setCandidates(prevCandidates => {
+        const updated: Candidate[] = [...prevCandidates];
+        generated.forEach(newCand => {
+          const idx = updated.findIndex(c => c.name === newCand.name);
+          if (idx !== -1) {
+            // Update existing candidate row
+            updated[idx] = { ...updated[idx], ...newCand };
+          } else {
+            // Add new candidate row
+            updated.push(newCand);
+          }
+        });
+        return updated;
+      });
       setJDChangedSinceScan(false);
     }
   };
