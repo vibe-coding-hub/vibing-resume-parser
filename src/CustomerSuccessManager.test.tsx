@@ -415,47 +415,9 @@ describe('generateCandidatesFromJD', () => {
     const candidates = generateCandidatesFromJD(jd, [resumeText]);
     expect(candidates[0].name).toBe('Hari Babu Kariprolu');
   });
-});
 
-describe('PDF candidate name extraction', () => {
-  const jd = 'Must Have: Golang\nNice to Have: Microservices';
-  
-  // Pre-extracted text content from actual PDFs to avoid timeout issues
-  const textTests = [
-    {
-      name: 'HariBabu.pdf',
-      text: `Hari Babu Kariprolu 
-Email: kariproluhari@gmail.com | Mobile: +91 9398677813| 
-LinkedIn: [https://www.linkedin.com/in/hari-babu-2b45b915a/] 
- 
-Professional Summary 
-● 9.4+  years of  experience  in  Software  Development, specializing  in  Restful web services,  distributed
-web applications and API integrations.`,
-      expected: 'Hari Babu Kariprolu'
-    },
-    {
-      name: 'KomalRavindraKadam.pdf',
-      text: `Komal Kadam
-
-+91-9158173535|#komal.kadam2@cognizant.com|ïkomalkadam2202
-SENIOR FRONTEND DEVELOPER
-Dedicated Frontend Developer with5+ yearsof professional experience. Proficient in Angular and MEAN technologies.`,
-      expected: 'Komal Kadam'
-    },
-    {
-      name: 'Protik Biswas.pdf',
-      text: `Protik Biswas 
-Senior Software Engineer with 7 
-years of experience 
-4306, Prestige High fields Apartment 
-Nanakadamguda, Hyderabad 500032 
-+91 970 435 0092 
-protikbiswas100@gmail.com`,
-      expected: 'Protik Biswas'
-    },
-    {
-      name: 'RavinderKumar.pdf',
-      text: `Software Engineer with over 4.5+ years of expertise in building web
+  it('extracts correct location for Ravinder Kumar', () => {
+    const resumeText = `Software Engineer with over 4.5+ years of expertise in building web
 applications and backend systems using Laravel, PHP, Golang, Vuejs. Skilled
 in crafting clear, maintainable code, scalable API development, 
 Module Lead
@@ -470,17 +432,101 @@ EDUCATION
 RK
 RAVINDER KUMAR
 Software Engineer
-9818720984 rav45200@gmail.com`,
-      expected: 'RAVINDER KUMAR'
-    }
+9818720984 rav45200@gmail.com
+https://www.linkedin.com/in/ravinder-kumar-a4b954166
+Faridabad`;
+    const jd = 'Must Have: Golang\nNice to Have: Microservices';
+    const candidates = generateCandidatesFromJD(jd, [resumeText]);
+    expect(candidates[0].name).toBe('RAVINDER KUMAR');
+    expect(candidates[0].location).toBe('Faridabad');
+  });
+
+  it('extracts correct location for Protik Biswas', () => {
+    const resumeText = `Protik Biswas 
+Senior Software Engineer with 7 
+years of experience 
+4306, Prestige High fields Apartment 
+Nanakadamguda, Hyderabad 500032 
++91 970 435 0092 
+protikbiswas100@gmail.com`;
+    const jd = 'Must Have: Golang\nNice to Have: Microservices';
+    const candidates = generateCandidatesFromJD(jd, [resumeText]);
+    expect(candidates[0].name).toBe('Protik Biswas');
+    expect(candidates[0].location).toBe('Hyderabad');
+  });
+});
+
+describe('PDF candidate name extraction', () => {
+  const jd = 'Must Have: Golang\nNice to Have: Microservices';
+  
+  // Pre-extracted text content from actual PDFs to avoid timeout issues
+  const textTests = [
+         {
+       name: 'HariBabu.pdf',
+       text: `Hari Babu Kariprolu 
+Email: kariproluhari@gmail.com | Mobile: +91 9398677813| 
+LinkedIn: [https://www.linkedin.com/in/hari-babu-2b45b915a/] 
+ 
+Professional Summary 
+● 9.4+  years of  experience  in  Software  Development, specializing  in  Restful web services,  distributed
+web applications and API integrations.`,
+       expected: 'Hari Babu Kariprolu'
+     },
+     {
+       name: 'KomalRavindraKadam.pdf',
+       text: `Komal Kadam
+
++91-9158173535|#komal.kadam2@cognizant.com|ïkomalkadam2202
+SENIOR FRONTEND DEVELOPER
+Dedicated Frontend Developer with5+ yearsof professional experience. Proficient in Angular and MEAN technologies.`,
+       expected: 'Komal Kadam'
+     },
+     {
+       name: 'Protik Biswas.pdf',
+       text: `Protik Biswas 
+Senior Software Engineer with 7 
+years of experience 
+4306, Prestige High fields Apartment 
+Nanakadamguda, Hyderabad 500032 
++91 970 435 0092 
+protikbiswas100@gmail.com`,
+       expected: 'Protik Biswas',
+       expectedLocation: 'Hyderabad'
+     },
+         {
+       name: 'RavinderKumar.pdf',
+       text: `Software Engineer with over 4.5+ years of expertise in building web
+applications and backend systems using Laravel, PHP, Golang, Vuejs. Skilled
+in crafting clear, maintainable code, scalable API development, 
+Module Lead
+Bluelupin Technologies Private limited
+01/2022 - 10/2023
+Noida
+SUMMARY
+PROFESSIONAL EXPERIENCE
+SKILLS
+STRENGTHS 
+EDUCATION
+RK
+RAVINDER KUMAR
+Software Engineer
+9818720984 rav45200@gmail.com
+https://www.linkedin.com/in/ravinder-kumar-a4b954166
+Faridabad`,
+       expected: 'RAVINDER KUMAR',
+       expectedLocation: 'Faridabad'
+     }
   ];
 
-  textTests.forEach(({ name, text, expected }) => {
-    it(`extracts correct candidate name for ${name}`, () => {
-      const candidates = generateCandidatesFromJD(jd, [text]);
-      expect(candidates[0].name).toBe(expected);
-    });
-  });
+     textTests.forEach(({ name, text, expected, expectedLocation }) => {
+     it(`extracts correct candidate name for ${name}`, () => {
+       const candidates = generateCandidatesFromJD(jd, [text]);
+       expect(candidates[0].name).toBe(expected);
+       if (expectedLocation) {
+         expect(candidates[0].location).toBe(expectedLocation);
+       }
+     });
+   });
 
   // Keep one actual PDF test but with a much longer timeout as integration test
   const pdfTests = [

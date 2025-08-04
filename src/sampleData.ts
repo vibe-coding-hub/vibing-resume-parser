@@ -103,6 +103,75 @@ export function generateCandidatesFromJD(jd: string, resumes: string[]): Candida
       candidateName = lines[0];
     }
 
+    // Extract location
+    const extractLocation = () => {
+      // Strategy 1: Look for common Indian cities
+      const indianCities = [
+        'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Hyderabad', 'Pune', 'Kolkata', 'Ahmedabad', 
+        'Surat', 'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam',
+        'Pimpri', 'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut',
+        'Rajkot', 'Kalyan', 'Vasai', 'Varanasi', 'Srinagar', 'Aurangabad', 'Dhanbad', 'Amritsar',
+        'Navi Mumbai', 'Allahabad', 'Ranchi', 'Howrah', 'Coimbatore', 'Jabalpur', 'Gwalior', 'Vijayawada',
+        'Jodhpur', 'Madurai', 'Raipur', 'Kota', 'Guwahati', 'Chandigarh', 'Solapur', 'Hubballi', 'Tiruchirappalli',
+        'Bareilly', 'Mysore', 'Tiruppur', 'Gurgaon', 'Aligarh', 'Jalandhar', 'Bhubaneswar', 'Salem',
+        'Warangal', 'Guntur', 'Bhiwandi', 'Saharanpur', 'Gorakhpur', 'Bikaner', 'Amravati', 'Noida'
+      ];
+      
+      // Strategy 2: Look for city names in the text
+      const fullText = resume.toLowerCase();
+      for (const city of indianCities) {
+        if (fullText.includes(city.toLowerCase())) {
+          // Check context to make sure it's a location, not company name
+          const cityIndex = fullText.indexOf(city.toLowerCase());
+          const context = resume.substring(Math.max(0, cityIndex - 50), cityIndex + city.length + 50);
+          
+          // Skip if it's part of company name or in professional context
+          if (!context.toLowerCase().includes('technologies') &&
+              !context.toLowerCase().includes('company') &&
+              !context.toLowerCase().includes('ltd') &&
+              !context.toLowerCase().includes('private limited') &&
+              !context.toLowerCase().includes('corporation') &&
+              !context.toLowerCase().includes('solutions')) {
+            return city;
+          }
+        }
+      }
+      
+      // Strategy 3: Look for location patterns in lines
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Skip lines that are too short or too long
+        if (line.length < 3 || line.length > 100) continue;
+        
+        // Skip obvious non-location lines
+        if (/email|mobile|phone|\+\d{1,3}|@|linkedin|http|summary|experience|engineer|developer|manager|skills|education|professional|years|expertise|building|software/i.test(line)) {
+          continue;
+        }
+        
+        // Look for standalone city names (single word locations)
+        const words = line.split(/\s+/);
+        if (words.length === 1 && words[0].length >= 4) {
+          const word = words[0];
+          // Check if it matches known cities
+          const matchedCity = indianCities.find(city => city.toLowerCase() === word.toLowerCase());
+          if (matchedCity) {
+            return matchedCity;
+          }
+        }
+        
+        // Look for "City, State" patterns
+        const locationPattern = /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)?$/;
+        if (locationPattern.test(line.trim()) && !line.toLowerCase().includes('university') && !line.toLowerCase().includes('college')) {
+          return line.trim();
+        }
+      }
+      
+      return 'Unknown';
+    };
+
+    const candidateLocation = extractLocation();
+
     // Find matched and missing skills
     const matchedMustHave = mustHaveSkills.filter(skill => skill && new RegExp(skill, 'i').test(resume));
     const matchedNiceToHave = niceToHaveSkills.filter(skill => skill && new RegExp(skill, 'i').test(resume));
@@ -132,7 +201,7 @@ export function generateCandidatesFromJD(jd: string, resumes: string[]): Candida
     return {
       id: String(idx + 1),
       name: candidateName,
-      location: 'Unknown',
+      location: candidateLocation,
       currentRole: experiences[0]?.role || 'Unknown',
       currentCompany: experiences[0]?.company || 'Unknown',
       score,
