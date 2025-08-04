@@ -171,8 +171,8 @@ const CustomerSuccessManager: React.FC<CustomerSuccessManagerProps> = ({
         <div className="logo">🎯</div>
         <h1>Customer Success Manager</h1>
       </header>
-      {jdResumeSection}
       <div className="content">
+        {jdResumeSection}
         {renderUploadSection()}
         
         <div className="section-headers">
