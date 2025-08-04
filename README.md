@@ -1,16 +1,17 @@
-# Customer Success Manager Dashboard
+# Smart Resume Parser
 
-A React component that displays a candidate evaluation dashboard for Customer Success Manager positions, featuring candidate profiles, experience timelines, detailed assessments, and recommendation controls.
+A React application for parsing, analyzing, and scoring resumes against a submitted Job Description (JD). Supports PDF, DOCX, and TXT resume formats, robust candidate name and experience extraction, and a modern UI for candidate evaluation.
 
 ## Features
 
-- **Candidate Profiles**: Display candidate names, locations, current roles, and companies
-- **Circular Score Indicators**: Visual score representation with color-coded progress circles
-- **Experience Timeline**: Show candidate work history with company icons and role details
-- **Strengths & Weaknesses**: Detailed assessment sections for each candidate
-- **Recommendation Controls**: Interactive approve/hold/reject buttons for each candidate
-- **Responsive Design**: Optimized for desktop and mobile viewing
-- **TypeScript Support**: Full type safety and IntelliSense support
+- **JD Submission Workflow**: Submit a Job Description with Must Have and Nice to Have skills
+- **Resume Upload**: Upload multiple resumes (PDF/DOCX/TXT) and analyze candidates
+- **Candidate Profiles**: Extract and display candidate names, experience, strengths, weaknesses, and scores
+- **PDF-to-Text Support**: Parse PDF resumes in-browser and in Node.js
+- **Weighted Scoring**: Must Have and Nice to Have skills with configurable weights
+- **Experience Extraction**: Robust parsing of varied resume formats
+- **Modern UI**: Responsive, grid-based layout with interactive controls
+- **TypeScript Support**: Full type safety and IntelliSense
 
 ## Installation
 
@@ -105,9 +106,9 @@ npm run test:coverage
 
 ### Test Coverage
 
-The component includes comprehensive tests covering:
+The application includes comprehensive tests covering:
 
-- Component rendering and data display
+- Resume parsing and candidate extraction
 - User interactions (button clicks, recommendation changes)
 - Score calculation and color coding
 - Accessibility compliance
@@ -129,9 +130,10 @@ The component includes comprehensive tests covering:
 ├── CustomerSuccessManager.tsx    # Main component
 ├── CustomerSuccessManager.css    # Component styles
 ├── CustomerSuccessManager.test.tsx # Unit tests
-├── sampleData.ts                # Sample data for testing
+├── sampleData.ts                # Resume parsing and scoring logic
 ├── App.tsx                      # Demo application
 ├── App.css                      # Application styles
+├── sample-resumes/              # Sample resumes (PDF, TXT)
 └── package.json                 # Dependencies and scripts
 ```
 
